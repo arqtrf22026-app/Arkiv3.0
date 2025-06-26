@@ -171,7 +171,9 @@ export function WatermarkWiz() {
     }
 
     for (let i = 0; i < sourceImages.length; i++) {
-        const sourceDataUri = await fileToDataURL(sourceImages[i]);
+        const sourceFile = sourceImages[i];
+        const sourceDataUri = await fileToDataURL(sourceFile);
+        const fileType = sourceFile.type;
 
         const processedData = await new Promise<string>((resolve) => {
             const sourceImg = new window.Image();
@@ -189,7 +191,7 @@ export function WatermarkWiz() {
                     const posY = (offscreenCanvas.height - newHeight) * settings.y;
                     ctx.drawImage(watermarkImg, posX, posY, newWidth, newHeight);
                     ctx.globalAlpha = 1.0;
-                    resolve(offscreenCanvas.toDataURL('image/jpeg', 0.9));
+                    resolve(offscreenCanvas.toDataURL(fileType, 1.0));
                 };
                 watermarkImg.src = watermarkDataUri;
             };
@@ -309,7 +311,7 @@ export function WatermarkWiz() {
                     label="Imagens"
                     onUpload={handleImagesUpload}
                     multiple
-                    accept="image/jpeg"
+                    accept="image/jpeg, image/png"
                     icon={ImageIcon}
                     files={sourceImages}
                     onClear={() => { setSourceImages([]); setSourceImagePreviews([]); setProcessedImages([]); }}
