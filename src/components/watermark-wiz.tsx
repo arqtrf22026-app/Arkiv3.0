@@ -40,6 +40,62 @@ const fileToDataURL = (file: File): Promise<string> => {
   });
 };
 
+const dataURLtoBlob = (dataurl: string) => {
+  const arr = dataurl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  if (!mimeMatch) throw new Error("Invalid data URL");
+  const mime = mimeMatch[1];
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while(n--){
+      u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], {type:mime});
+};
+
+const FileInput = ({ id, label, onUpload, multiple = false, accept, icon: Icon, files, onClear }: {
+  id: string;
+  label: string;
+  onUpload: (e: ChangeEvent<HTMLInputElement>) => void;
+  multiple?: boolean;
+  accept: string;
+  icon: React.ElementType;
+  files: File[] | File | null;
+  onClear: () => void;
+}) => (
+  <div className="space-y-2">
+    <Label className="text-lg font-semibold">{label}</Label>
+    <div className="relative rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-primary">
+        <input
+          id={id}
+          type="file"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          onChange={onUpload}
+          multiple={multiple}
+          accept={accept}
+        />
+        <div className="flex flex-col items-center justify-center space-y-2 text-muted-foreground">
+          <Icon className="h-10 w-10" />
+          <p>Arraste e solte ou clique para carregar</p>
+        </div>
+    </div>
+      {(files && (Array.isArray(files) ? files.length > 0 : true)) && (
+      <div className="pt-2">
+        <div className="flex items-center justify-between rounded-md bg-muted p-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <span>{Array.isArray(files) ? `${files.length} arquivo(s) carregado(s)` : (files as File).name}</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClear}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+        </div>
+      </div>
+    )}
+  </div>
+);
+
 export function WatermarkWiz() {
   const { toast } = useToast();
   const [watermark, setWatermark] = useState<File | null>(null);
@@ -222,62 +278,6 @@ export function WatermarkWiz() {
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
   };
-
-  const dataURLtoBlob = (dataurl: string) => {
-    const arr = dataurl.split(',');
-    const mimeMatch = arr[0].match(/:(.*?);/);
-    if (!mimeMatch) throw new Error("Invalid data URL");
-    const mime = mimeMatch[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while(n--){
-        u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], {type:mime});
-  }
-
-  const FileInput = ({ id, label, onUpload, multiple = false, accept, icon: Icon, files, onClear }: {
-    id: string;
-    label: string;
-    onUpload: (e: ChangeEvent<HTMLInputElement>) => void;
-    multiple?: boolean;
-    accept: string;
-    icon: React.ElementType;
-    files: File[] | File | null;
-    onClear: () => void;
-  }) => (
-    <div className="space-y-2">
-      <Label className="text-lg font-semibold">{label}</Label>
-      <div className="relative rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-primary">
-          <input
-            id={id}
-            type="file"
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            onChange={onUpload}
-            multiple={multiple}
-            accept={accept}
-          />
-          <div className="flex flex-col items-center justify-center space-y-2 text-muted-foreground">
-            <Icon className="h-10 w-10" />
-            <p>Arraste e solte ou clique para carregar</p>
-          </div>
-      </div>
-       {(files && (Array.isArray(files) ? files.length > 0 : true)) && (
-        <div className="pt-2">
-          <div className="flex items-center justify-between rounded-md bg-muted p-2">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                <span>{Array.isArray(files) ? `${files.length} arquivo(s) carregado(s)` : (files as File).name}</span>
-              </div>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClear}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
