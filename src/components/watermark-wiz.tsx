@@ -105,7 +105,7 @@ export function WatermarkWiz() {
   const [processedImages, setProcessedImages] = useState<string[]>([]);
   const [settings, setSettings] = useState<WatermarkSettings>({ x: 0.5, y: 0.5, scale: 0.2, opacity: 0.7 });
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-  
+
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
@@ -136,7 +136,7 @@ export function WatermarkWiz() {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     const sourcePreview = sourceImagePreviews[selectedImageIndex];
-    
+
     if (!ctx || !canvas || !watermarkPreview || !sourcePreview) return;
 
     const sourceImg = new window.Image();
@@ -212,7 +212,7 @@ export function WatermarkWiz() {
       toast({ title: 'Erro', description: 'Carregue a marca d\'água e as imagens primeiro.', variant: 'destructive' });
       return;
     }
-    
+
     setIsProcessing(true);
     setProcessingProgress(0);
     const results: string[] = [];
@@ -257,11 +257,11 @@ export function WatermarkWiz() {
         results.push(processedData);
         setProcessingProgress(((i + 1) / sourceImages.length) * 100);
     }
-    
+
     setProcessedImages(results);
     setIsProcessing(false);
   };
-  
+
   const handleDownloadAll = async () => {
     const zip = new JSZip();
     processedImages.forEach((dataUrl, index) => {
@@ -290,7 +290,6 @@ export function WatermarkWiz() {
       
       <main className="container mx-auto p-4 md:p-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-            {/* Left Panel: Uploads and Image List */}
             <div className="lg:col-span-3 space-y-6">
               <Card>
                 <CardHeader>
@@ -346,7 +345,6 @@ export function WatermarkWiz() {
               )}
             </div>
 
-            {/* Middle Panel: Editor Canvas */}
             <div className="lg:col-span-6">
               <Card className="sticky top-24">
                 <CardHeader>
@@ -366,7 +364,6 @@ export function WatermarkWiz() {
               </Card>
             </div>
 
-            {/* Right Panel: Settings and Actions */}
             <div className="lg:col-span-3 space-y-6">
                <Card className="sticky top-24">
                 <CardHeader>
@@ -437,7 +434,7 @@ export function WatermarkWiz() {
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
                   {processedImages.map((src, index) => (
                     <div key={index} className="group relative aspect-square overflow-hidden rounded-lg">
-                      <Image src={src} alt={`Processed image ${index + 1}`} layout="fill" className="object-cover" />
+                      <Image src={src} alt={`Processed image ${index + 1}`} fill className="object-cover" />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                         <a href={src} download={sourceImages[index].name} className={cn(buttonVariants({ size: 'icon' }))}>
                           <Download className="h-5 w-5" />
