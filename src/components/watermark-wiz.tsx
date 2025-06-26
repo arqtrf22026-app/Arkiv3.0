@@ -57,8 +57,11 @@ const dataURLtoBlob = (dataurl: string): Blob | null => {
 
 export const WatermarkWiz: FC = () => {
   const {toast} = useToast();
-  const [watermark, setWatermark] = useState<File | null>(null);
-  const [watermarkPreview, setWatermarkPreview] = useState<string | null>(null);
+  const [watermarkPortrait, setWatermarkPortrait] = useState<File | null>(null);
+  const [watermarkPortraitPreview, setWatermarkPortraitPreview] = useState<string | null>(null);
+  const [watermarkLandscape, setWatermarkLandscape] = useState<File | null>(null);
+  const [watermarkLandscapePreview, setWatermarkLandscapePreview] = useState<string | null>(null);
+
   const [sourceImages, setSourceImages] = useState<File[]>([]);
   const [sourceImagePreviews, setSourceImagePreviews] = useState<string[]>([]);
   const [processedImages, setProcessedImages] = useState<string[]>([]);
@@ -68,14 +71,22 @@ export const WatermarkWiz: FC = () => {
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  const handleWatermarkUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setWatermark(file);
-      const preview = await fileToDataURL(file);
-      setWatermarkPreview(preview);
-    }
-  }, []);
+  const handleWatermarkUpload = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>, orientation: 'portrait' | 'landscape') => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const preview = await fileToDataURL(file);
+        if (orientation === 'portrait') {
+          setWatermarkPortrait(file);
+          setWatermarkPortraitPreview(preview);
+        } else {
+          setWatermarkLandscape(file);
+          setWatermarkLandscapePreview(preview);
+        }
+      }
+    },
+    []
+  );
 
   const handleImagesUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -88,43 +99,51 @@ export const WatermarkWiz: FC = () => {
     }
   }, []);
 
-  const drawCanvas = useCallback(() => {
+  useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     const sourcePreview = sourceImagePreviews[selectedImageIndex];
 
-    if (!ctx || !canvas || !watermarkPreview || !sourcePreview) return;
+    if (!ctx || !canvas || !sourcePreview) return;
 
     const sourceImg = new window.Image();
     const watermarkImg = new window.Image();
 
     sourceImg.onload = () => {
-      watermarkImg.onload = () => {
-        canvas.width = sourceImg.naturalWidth;
-        canvas.height = sourceImg.naturalHeight;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
+      canvas.width = sourceImg.naturalWidth;
+      canvas.height = sourceImg.naturalHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        ctx.globalAlpha = settings.opacity;
-        ctx.drawImage(watermarkImg, 0, 0, canvas.width, canvas.height);
-        ctx.globalAlpha = 1.0;
-      };
-      watermarkImg.src = watermarkPreview;
+      const isPortrait = sourceImg.naturalHeight > sourceImg.naturalWidth;
+      const watermarkPreview = isPortrait
+        ? watermarkPortraitPreview
+        : watermarkLandscapePreview;
+
+      ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
+
+      if (watermarkPreview) {
+        watermarkImg.onload = () => {
+          ctx.globalAlpha = settings.opacity;
+          ctx.drawImage(watermarkImg, 0, 0, canvas.width, canvas.height);
+          ctx.globalAlpha = 1.0;
+        };
+        watermarkImg.src = watermarkPreview;
+      }
     };
     sourceImg.src = sourcePreview;
-  }, [watermarkPreview, sourceImagePreviews, selectedImageIndex, settings]);
-
-  useEffect(() => {
-    if (sourceImagePreviews.length > 0 && watermarkPreview) {
-      drawCanvas();
-    }
-  }, [drawCanvas, sourceImagePreviews, watermarkPreview]);
+  }, [
+    sourceImagePreviews,
+    selectedImageIndex,
+    watermarkPortraitPreview,
+    watermarkLandscapePreview,
+    settings.opacity,
+  ]);
 
   const applyWatermarkToAll = useCallback(async () => {
-    if (!watermark || sourceImages.length === 0) {
+    if ((!watermarkPortraitPreview && !watermarkLandscapePreview) || sourceImages.length === 0) {
       toast({
-        title: 'Error',
-        description: 'Upload watermark and images first.',
+        title: 'Erro',
+        description: "Carregue pelo menos uma marca d'água e imagens de origem primeiro.",
         variant: 'destructive',
       });
       return;
@@ -136,7 +155,7 @@ export const WatermarkWiz: FC = () => {
     const offscreenCanvas = document.createElement('canvas');
     const ctx = offscreenCanvas.getContext('2d');
 
-    if (!ctx || !watermarkPreview) {
+    if (!ctx) {
       toast({
         title: 'Error',
         description: 'Could not start processing.',
@@ -152,23 +171,36 @@ export const WatermarkWiz: FC = () => {
         const sourceImg = new window.Image();
         const watermarkImg = new window.Image();
         sourceImg.onload = () => {
-          watermarkImg.onload = () => {
-            offscreenCanvas.width = sourceImg.naturalWidth;
-            offscreenCanvas.height = sourceImg.naturalHeight;
-            ctx.drawImage(sourceImg, 0, 0);
-            ctx.globalAlpha = settings.opacity;
-            ctx.drawImage(
-              watermarkImg,
-              0,
-              0,
-              offscreenCanvas.width,
-              offscreenCanvas.height
-            );
-            ctx.globalAlpha = 1.0;
-            const fileType = sourceImages[i].type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+          offscreenCanvas.width = sourceImg.naturalWidth;
+          offscreenCanvas.height = sourceImg.naturalHeight;
+          ctx.drawImage(sourceImg, 0, 0);
+
+          const isPortrait = sourceImg.naturalHeight > sourceImg.naturalWidth;
+          const watermarkToUse = isPortrait
+            ? watermarkPortraitPreview
+            : watermarkLandscapePreview;
+
+          if (watermarkToUse) {
+            watermarkImg.onload = () => {
+              ctx.globalAlpha = settings.opacity;
+              ctx.drawImage(
+                watermarkImg,
+                0,
+                0,
+                offscreenCanvas.width,
+                offscreenCanvas.height
+              );
+              ctx.globalAlpha = 1.0;
+              const fileType =
+                sourceImages[i].type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+              resolve(offscreenCanvas.toDataURL(fileType, 1.0));
+            };
+            watermarkImg.src = watermarkToUse;
+          } else {
+            const fileType =
+              sourceImages[i].type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
             resolve(offscreenCanvas.toDataURL(fileType, 1.0));
-          };
-          watermarkImg.src = watermarkPreview!;
+          }
         };
         sourceImg.src = sourceDataUri;
       });
@@ -179,7 +211,14 @@ export const WatermarkWiz: FC = () => {
 
     setProcessedImages(results);
     setIsProcessing(false);
-  }, [watermark, watermarkPreview, sourceImages, sourceImagePreviews, settings, toast]);
+  }, [
+    watermarkPortraitPreview,
+    watermarkLandscapePreview,
+    sourceImages,
+    sourceImagePreviews,
+    settings,
+    toast,
+  ]);
 
   const handleDownloadAll = useCallback(async () => {
     if (processedImages.length === 0) return;
@@ -201,13 +240,63 @@ export const WatermarkWiz: FC = () => {
     URL.revokeObjectURL(link.href);
   }, [processedImages, sourceImages]);
 
+  const renderFileInput = (
+    id: string,
+    label: string,
+    description: string,
+    file: File | null,
+    onFileChange: (e: ChangeEvent<HTMLInputElement>) => void,
+    onFileClear: () => void,
+    icon: FC<any>
+  ) => {
+    const Icon = icon;
+    return (
+      <div className="space-y-2">
+        <Label className="text-lg font-semibold">{label}</Label>
+        <p className="text-sm text-muted-foreground">{description}</p>
+        <div className="relative rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-primary">
+          <input
+            id={id}
+            type="file"
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            onChange={onFileChange}
+            multiple={false}
+            accept="image/png, image/jpeg"
+          />
+          <div className="flex flex-col items-center justify-center space-y-2 text-muted-foreground">
+            <Icon className="h-10 w-10" />
+            <p>Arraste e solte ou clique para carregar</p>
+          </div>
+        </div>
+        {file && (
+          <div className="pt-2">
+            <div className="flex items-center justify-between rounded-md bg-muted p-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <span>{file.name}</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={onFileClear}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
       <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <h1 className="text-2xl font-bold tracking-tight">Watermark Wiz</h1>
           <p className="text-sm text-muted-foreground">
-            Your batch watermarking solution
+            Sua solução de marca d'água em lote
           </p>
         </div>
       </header>
@@ -217,49 +306,36 @@ export const WatermarkWiz: FC = () => {
           <div className="lg:col-span-3 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>1. Upload Files</CardTitle>
+                <CardTitle>1. Carregar Arquivos</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                {renderFileInput(
+                  'watermark-portrait-upload',
+                  "Marca d'água (Retrato)",
+                  'Para imagens onde a altura é maior que a largura.',
+                  watermarkPortrait,
+                  (e) => handleWatermarkUpload(e, 'portrait'),
+                  () => {
+                    setWatermarkPortrait(null);
+                    setWatermarkPortraitPreview(null);
+                  },
+                  Upload
+                )}
+                {renderFileInput(
+                  'watermark-landscape-upload',
+                  "Marca d'água (Paisagem)",
+                  'Para imagens onde a largura é maior que a altura.',
+                  watermarkLandscape,
+                  (e) => handleWatermarkUpload(e, 'landscape'),
+                  () => {
+                    setWatermarkLandscape(null);
+                    setWatermarkLandscapePreview(null);
+                  },
+                  Upload
+                )}
+                <Separator />
                 <div className="space-y-2">
-                  <Label className="text-lg font-semibold">Watermark</Label>
-                  <div className="relative rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-primary">
-                    <input
-                      id="watermark-upload"
-                      type="file"
-                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                      onChange={handleWatermarkUpload}
-                      multiple={false}
-                      accept="image/png, image/jpeg"
-                    />
-                    <div className="flex flex-col items-center justify-center space-y-2 text-muted-foreground">
-                      <Upload className="h-10 w-10" />
-                      <p>Drag & drop or click to upload</p>
-                    </div>
-                  </div>
-                  {watermark && (
-                    <div className="pt-2">
-                      <div className="flex items-center justify-between rounded-md bg-muted p-2">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <CheckCircle2 className="h-5 w-5 text-green-500" />
-                          <span>{watermark.name}</span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => {
-                            setWatermark(null);
-                            setWatermarkPreview(null);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-lg font-semibold">Images</Label>
+                  <Label className="text-lg font-semibold">Imagens</Label>
                   <div className="relative rounded-lg border-2 border-dashed border-border p-6 text-center transition hover:border-primary">
                     <input
                       id="images-upload"
@@ -271,7 +347,7 @@ export const WatermarkWiz: FC = () => {
                     />
                     <div className="flex flex-col items-center justify-center space-y-2 text-muted-foreground">
                       <ImageIcon className="h-10 w-10" />
-                      <p>Drag & drop or click to upload</p>
+                      <p>Arraste e solte ou clique para carregar</p>
                     </div>
                   </div>
                   {sourceImages.length > 0 && (
@@ -279,7 +355,7 @@ export const WatermarkWiz: FC = () => {
                       <div className="flex items-center justify-between rounded-md bg-muted p-2">
                         <div className="flex items-center gap-2 text-sm font-medium">
                           <CheckCircle2 className="h-5 w-5 text-green-500" />
-                          <span>{`${sourceImages.length} file(s) loaded`}</span>
+                          <span>{`${sourceImages.length} arquivo(s) carregado(s)`}</span>
                         </div>
                         <Button
                           variant="ghost"
@@ -303,9 +379,9 @@ export const WatermarkWiz: FC = () => {
             {sourceImages.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Image Queue</CardTitle>
+                  <CardTitle>Fila de Imagens</CardTitle>
                   <CardDescription>
-                    {sourceImages.length} images ready to process.
+                    {sourceImages.length} imagens prontas para processar.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="max-h-96 overflow-y-auto">
@@ -342,13 +418,13 @@ export const WatermarkWiz: FC = () => {
           <div className="lg:col-span-6">
             <Card className="sticky top-24">
               <CardHeader>
-                <CardTitle>2. Preview Editor</CardTitle>
+                <CardTitle>2. Editor de Visualização</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="relative aspect-video w-full overflow-hidden rounded-lg bg-muted flex items-center justify-center">
-                  {!watermarkPreview || sourceImagePreviews.length === 0 ? (
+                  {!watermarkPortraitPreview && !watermarkLandscapePreview && sourceImagePreviews.length === 0 ? (
                     <div className="text-center text-muted-foreground p-4">
-                      <p>Upload a watermark and an image to begin.</p>
+                      <p>Carregue uma marca d'água e uma imagem para começar.</p>
                     </div>
                   ) : (
                     <canvas
@@ -365,7 +441,7 @@ export const WatermarkWiz: FC = () => {
             <Card className="sticky top-24">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>3. Adjustments</CardTitle>
+                  <CardTitle>3. Ajustes</CardTitle>
                   <Settings2 className="h-5 w-5 text-muted-foreground" />
                 </div>
               </CardHeader>
@@ -373,7 +449,7 @@ export const WatermarkWiz: FC = () => {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="opacity">
-                      Opacity: {Math.round(settings.opacity * 100)}%
+                      Opacidade: {Math.round(settings.opacity * 100)}%
                     </Label>
                     <Slider
                       id="opacity"
@@ -390,20 +466,20 @@ export const WatermarkWiz: FC = () => {
                 <Button
                   onClick={applyWatermarkToAll}
                   disabled={
-                    isProcessing || !watermark || sourceImages.length === 0
+                    isProcessing || (!watermarkPortrait && !watermarkLandscape) || sourceImages.length === 0
                   }
                   className="w-full"
                 >
                   {isProcessing && (
                     <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Apply to All
+                  Aplicar em Todos
                 </Button>
                 {isProcessing && (
                   <div className="space-y-2">
                     <Progress value={processingProgress} />
                     <p className="text-sm text-center text-muted-foreground">
-                      Processing {Math.round(processingProgress)}%
+                      Processando {Math.round(processingProgress)}%
                     </p>
                   </div>
                 )}
@@ -418,14 +494,14 @@ export const WatermarkWiz: FC = () => {
               <CardHeader>
                 <div className="flex flex-col items-start gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <CardTitle>4. Results</CardTitle>
+                    <CardTitle>4. Resultados</CardTitle>
                     <CardDescription>
-                      {processedImages.length} images successfully processed.
+                      {processedImages.length} imagens processadas com sucesso.
                     </CardDescription>
                   </div>
                   <Button onClick={handleDownloadAll}>
                     <Download className="mr-2 h-4 w-4" />
-                    Download All (ZIP)
+                    Baixar Todos (ZIP)
                   </Button>
                 </div>
               </CardHeader>
