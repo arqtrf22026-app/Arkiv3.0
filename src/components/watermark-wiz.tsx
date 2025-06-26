@@ -6,7 +6,6 @@ import Image from 'next/image';
 import {
   Upload,
   Image as ImageIcon,
-  Sparkles,
   Download,
   Settings2,
   Trash2,
@@ -21,13 +20,9 @@ import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { optimizeWatermarkPlacement, type OptimizeWatermarkPlacementInput } from '@/ai/flows/optimize-watermark-placement';
 import { cn } from '@/lib/utils';
 
 interface WatermarkSettings {
-  x: number;
-  y: number;
-  scale: number;
   opacity: number;
 }
 
@@ -62,9 +57,8 @@ export const WatermarkWiz = () => {
   const [sourceImages, setSourceImages] = useState<File[]>([]);
   const [sourceImagePreviews, setSourceImagePreviews] = useState<string[]>([]);
   const [processedImages, setProcessedImages] = useState<string[]>([]);
-  const [settings, setSettings] = useState<WatermarkSettings>({ x: 0.5, y: 0.5, scale: 0.2, opacity: 0.7 });
+  const [settings, setSettings] = useState<WatermarkSettings>({ opacity: 0.5 });
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
-  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -105,13 +99,9 @@ export const WatermarkWiz = () => {
         canvas.height = sourceImg.naturalHeight;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(sourceImg, 0, 0, canvas.width, canvas.height);
+        
         ctx.globalAlpha = settings.opacity;
-        const watermarkAspectRatio = watermarkImg.naturalWidth / watermarkImg.naturalHeight;
-        const newWidth = canvas.width * settings.scale;
-        const newHeight = newWidth / watermarkAspectRatio;
-        const posX = (canvas.width - newWidth) * settings.x;
-        const posY = (canvas.height - newHeight) * settings.y;
-        ctx.drawImage(watermarkImg, posX, posY, newWidth, newHeight);
+        ctx.drawImage(watermarkImg, 0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1.0;
       };
       watermarkImg.src = watermarkPreview;
@@ -124,27 +114,6 @@ export const WatermarkWiz = () => {
       drawCanvas();
     }
   }, [drawCanvas, sourceImagePreviews, watermarkPreview]);
-
-  const handleAiOptimize = useCallback(async () => {
-    if (!watermark || sourceImages.length === 0) {
-        toast({ title: 'Error', description: 'Please upload a watermark and at least one image.', variant: 'destructive' });
-        return;
-    }
-    setIsAiLoading(true);
-    try {
-        const photoDataUri = sourceImagePreviews[selectedImageIndex];
-        const watermarkDataUri = watermarkPreview!;
-        const input: OptimizeWatermarkPlacementInput = { photoDataUri, watermarkDataUri };
-        const result = await optimizeWatermarkPlacement(input);
-        setSettings(prev => ({ ...prev, x: result.x, y: result.y, scale: result.scale }));
-        toast({ title: 'Success!', description: 'AI optimized the watermark placement.', className: 'bg-green-100 dark:bg-green-900' });
-    } catch (error) {
-        console.error('AI optimization failed:', error);
-        toast({ title: 'Optimization Failed', description: 'Could not optimize watermark. Please try again.', variant: 'destructive' });
-    } finally {
-        setIsAiLoading(false);
-    }
-  }, [watermark, sourceImages, toast, sourceImagePreviews, selectedImageIndex, watermarkPreview]);
 
   const applyWatermarkToAll = useCallback(async () => {
     if (!watermark || sourceImages.length === 0) {
@@ -166,7 +135,6 @@ export const WatermarkWiz = () => {
 
     for (let i = 0; i < sourceImages.length; i++) {
         const sourceDataUri = sourceImagePreviews[i];
-        const fileType = sourceImages[i].type;
         const processedData = await new Promise<string>((resolve) => {
             const sourceImg = new window.Image();
             const watermarkImg = new window.Image();
@@ -176,14 +144,9 @@ export const WatermarkWiz = () => {
                     offscreenCanvas.height = sourceImg.naturalHeight;
                     ctx.drawImage(sourceImg, 0, 0);
                     ctx.globalAlpha = settings.opacity;
-                    const watermarkAspectRatio = watermarkImg.naturalWidth / watermarkImg.naturalHeight;
-                    const newWidth = offscreenCanvas.width * settings.scale;
-                    const newHeight = newWidth / watermarkAspectRatio;
-                    const posX = (offscreenCanvas.width - newWidth) * settings.x;
-                    const posY = (offscreenCanvas.height - newHeight) * settings.y;
-                    ctx.drawImage(watermarkImg, posX, posY, newWidth, newHeight);
+                    ctx.drawImage(watermarkImg, 0, 0, offscreenCanvas.width, offscreenCanvas.height);
                     ctx.globalAlpha = 1.0;
-                    resolve(offscreenCanvas.toDataURL(fileType, 1.0));
+                    resolve(offscreenCanvas.toDataURL(sourceImages[i].type, 1.0));
                 };
                 watermarkImg.src = watermarkPreview!;
             };
@@ -332,23 +295,7 @@ export const WatermarkWiz = () => {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <Button onClick={handleAiOptimize} disabled={isAiLoading || !watermark || sourceImages.length === 0} className="w-full bg-accent hover:bg-accent/80 text-accent-foreground">
-                        {isAiLoading ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        Optimize with AI
-                    </Button>
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="x-pos">X-Position: {Math.round(settings.x * 100)}%</Label>
-                        <Slider id="x-pos" value={[settings.x]} onValueChange={([v]) => setSettings(s => ({...s, x: v}))} max={1} step={0.01} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="y-pos">Y-Position: {Math.round(settings.y * 100)}%</Label>
-                        <Slider id="y-pos" value={[settings.y]} onValueChange={([v]) => setSettings(s => ({...s, y: v}))} max={1} step={0.01} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="scale">Size: {Math.round(settings.scale * 100)}%</Label>
-                        <Slider id="scale" value={[settings.scale]} onValueChange={([v]) => setSettings(s => ({...s, scale: v}))} min={0.05} max={1} step={0.01} />
-                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="opacity">Opacity: {Math.round(settings.opacity * 100)}%</Label>
                         <Slider id="opacity" value={[settings.opacity]} onValueChange={([v]) => setSettings(s => ({...s, opacity: v}))} max={1} step={0.01} />
@@ -406,5 +353,3 @@ export const WatermarkWiz = () => {
     </div>
   );
 };
-
-    
