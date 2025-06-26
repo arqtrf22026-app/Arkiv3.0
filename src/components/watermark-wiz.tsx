@@ -14,7 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import JSZip from 'jszip';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
@@ -210,7 +210,7 @@ export function WatermarkWiz() {
     const zip = new JSZip();
     processedImages.forEach((dataUrl, index) => {
         const blob = dataURLtoBlob(dataUrl);
-        zip.file(`watermarked_${sourceImages[index].name}`, blob);
+        zip.file(sourceImages[index].name, blob);
     });
 
     const zipBlob = await zip.generateAsync({ type: 'blob' });
@@ -324,7 +324,7 @@ export function WatermarkWiz() {
                   <CardHeader>
                     <CardTitle>Imagens na Fila</CardTitle>
                     <CardDescription>{sourceImages.length} imagens prontas para processar.</CardDescription>
-                  </CardHeader>
+                  </Header>
                   <CardContent className="max-h-96 overflow-y-auto">
                     <div className="space-y-2">
                       {sourceImagePreviews.map((preview, index) => (
@@ -439,7 +439,7 @@ export function WatermarkWiz() {
                     <div key={index} className="group relative aspect-square overflow-hidden rounded-lg">
                       <Image src={src} alt={`Processed image ${index + 1}`} layout="fill" className="object-cover" />
                       <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
-                        <a href={src} download={`watermarked_${sourceImages[index].name}`} className={cn(buttonVariants({ size: 'icon' }))}>
+                        <a href={src} download={sourceImages[index].name} className={cn(buttonVariants({ size: 'icon' }))}>
                           <Download className="h-5 w-5" />
                         </a>
                       </div>
@@ -454,9 +454,3 @@ export function WatermarkWiz() {
     </div>
   );
 }
-
-// Re-exporting buttonVariants to be used in the component
-import { cva } from 'class-variance-authority';
-import { buttonVariants } from '@/components/ui/button';
-
-export { buttonVariants };
