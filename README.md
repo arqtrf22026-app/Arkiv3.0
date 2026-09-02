@@ -11,9 +11,7 @@ Sua solução de marca d'água em lote, rápida e eficiente.
 
 ## Como importar para o GitHub
 
-Para subir este projeto para o seu próprio repositório no GitHub, siga estes passos:
-
-1. **Crie um repositório** no seu GitHub (vazio, sem README).
+1. **Crie um repositório** no seu GitHub (vazio).
 2. **Abra o terminal** na pasta deste projeto.
 3. **Execute os seguintes comandos**:
 
@@ -26,4 +24,11 @@ git remote add origin https://github.com/SEU_USUARIO/NOME_DO_REPO.git
 git push -u origin main
 ```
 
-Substitua `SEU_USUARIO` e `NOME_DO_REPO` pelos seus dados.
+## Como rodar no Google Cloud Shell
+
+1. Abra o [Google Cloud Shell](https://shell.cloud.google.com).
+2. Clone seu repositório: `git clone https://github.com/SEU_USUARIO/NOME_DO_REPO.git`.
+3. Entre na pasta: `cd NOME_DO_REPO`.
+4. Instale as dependências: `npm install`.
+5. Inicie o app: `npm run dev`.
+6. No topo da janela do terminal, clique no ícone de **Visualização na Web** (Web Preview) e selecione **Visualizar na porta 9002**.

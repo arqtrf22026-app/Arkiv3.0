@@ -1,7 +1,7 @@
+
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, type ChangeEvent, type FC } from 'react';
-import Image from 'next/image';
+import React, { useState, useRef, useEffect, useCallback, type ChangeEvent } from 'react';
 import {
   Upload,
   Image as ImageIcon,
@@ -55,7 +55,7 @@ const dataURLtoBlob = (dataurl: string): Blob | null => {
   return new Blob([u8arr], { type: mime });
 };
 
-export const WatermarkWiz: FC = () => {
+export function WatermarkWiz() {
   const { toast } = useToast();
   
   const [watermarkPortrait, setWatermarkPortrait] = useState<File | null>(null);
@@ -443,4 +443,4 @@ export const WatermarkWiz: FC = () => {
       </main>
     </div>
   );
-};
+}
